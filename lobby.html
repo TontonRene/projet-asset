@@ -82,33 +82,22 @@
   <div id="flash"></div>
 </div>
 
-<!-- Three.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<!-- fflate (requis par FBXLoader) -->
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js"></script>
-<!-- FBXLoader -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const PASSWORD  = "1234"  // Vérifie qu'on vient bien de la page d'accueil
-
-// URLs FBX — tes fichiers sur GitHub
 const FBX_BASE = "https://raw.githubusercontent.com/TontonRene/projet-asset/main/"
 const FBX_CHAR = FBX_BASE + "uploads_files_6510901_WOMAN-OFFICER.fbx"
 const FBX_IDLE = FBX_BASE + "Idle.fbx"
 const FBX_WALK = FBX_BASE + "Walking.fbx"
 const FBX_JUMP = FBX_BASE + "Jumping.fbx"
 
-// Pages de destination
 const PAGES = {
-  art0: "quiz.html",
-  art1: "page-2.html",
-  art2: "page-3.html",
-  left:  "duck-hunt.html",
-  right: "chasse-taupe.html",
+  art0: "quiz.html", art1: "page-2.html", art2: "page-3.html",
+  left: "duck-hunt.html", right: "chasse-taupe.html",
 }
-
 const ART_LABELS = ["— I —", "— II —", "— III —"]
 
 // ─── INIT THREE.JS ────────────────────────────────────────────────────────────
@@ -133,18 +122,16 @@ const scene = new THREE.Scene()
 scene.fog = new THREE.FogExp2(0x0f0a05, 0.030)
 
 const camera = new THREE.PerspectiveCamera(62, W() / H(), 0.1, 80)
-camera.position.set(0, 2.8, 16)
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
 const mat = (color, rough = 0.85, metal = 0) =>
   new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal })
 
-// ─── LUMIÈRES ─────────────────────────────────────────────────────────────────
+// Lumières
 scene.add(new THREE.AmbientLight(0x3d2b1a, 0.9))
 const fill = new THREE.DirectionalLight(0xffd4a0, 0.25)
 fill.position.set(0, 10, 5); scene.add(fill)
-
 const artSpots = []
+
 function addSpot(px,py,pz,tx,ty,tz) {
   const sp = new THREE.SpotLight(0xffc87a, 2.2, 18, 0.28, 0.7)
   sp.position.set(px,py,pz); sp.target.position.set(tx,ty,tz)
@@ -152,7 +139,19 @@ function addSpot(px,py,pz,tx,ty,tz) {
   artSpots.push(sp); return sp
 }
 
-// ─── SOL DAMIER ───────────────────────────────────────────────────────────────
+// ─── CONSTRUCTION DE LA MAP (Basée sur le schéma) ─────────────────────────────
+const CH = 6 // hauteur murs
+const RADIUS = 8
+const ENTRANCE_W = 4.5
+const ENTRANCE_L = 12
+const ARM_LEN = 13
+const ARM_W = 5
+const ROOM_SIZE = 10
+
+// Orientations corrigées pour matcher ton dessin vu de dessus
+const LEFT_ANGLE  = -Math.PI * 0.25 // Haut-Gauche (-45 deg)
+const RIGHT_ANGLE = Math.PI * 0.25  // Haut-Droite (+45 deg)
+
 function makeTileFloor(cx, cz, w, d, angle = 0) {
   const grp = new THREE.Group()
   grp.position.set(cx, 0, cz); grp.rotation.y = angle
@@ -161,10 +160,7 @@ function makeTileFloor(cx, cz, w, d, angle = 0) {
   const m0 = mat(0xf0e8d8, 0.6), m1 = mat(0x1a1510, 0.8)
   for (let xi = 0; xi < nx; xi++) {
     for (let zi = 0; zi < nz; zi++) {
-      const tile = new THREE.Mesh(
-        new THREE.PlaneGeometry(s-0.03, s-0.03),
-        (xi+zi)%2===0 ? m0 : m1
-      )
+      const tile = new THREE.Mesh(new THREE.PlaneGeometry(s-0.03, s-0.03), (xi+zi)%2===0 ? m0 : m1)
       tile.rotation.x = -Math.PI/2
       tile.position.set(-w/2+xi*s+s/2, 0, -d/2+zi*s+s/2)
       tile.receiveShadow = true; grp.add(tile)
@@ -173,445 +169,227 @@ function makeTileFloor(cx, cz, w, d, angle = 0) {
   scene.add(grp)
 }
 
-const CH = 6  // hauteur des espaces
-
-// ─── COULOIR D'ENTRÉE ─────────────────────────────────────────────────────────
-makeTileFloor(0, 11, 4.5, 12)
-
-// Plafond + murs couloir
-const corrCeil = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 12), mat(0x0d0a06, 0.95))
-corrCeil.rotation.x = Math.PI/2; corrCeil.position.set(0, CH, 11); scene.add(corrCeil)
-
-;[-2.25, 2.25].forEach((sx, i) => {
-  const w = new THREE.Mesh(new THREE.PlaneGeometry(12, CH), mat(0x7a6a52, 0.92))
-  w.position.set(sx, CH/2, 11); w.rotation.y = i===0 ? Math.PI/2 : -Math.PI/2; scene.add(w)
-  // Plinthe
-  const pl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 12), mat(0xd4c4aa, 0.6))
-  pl.position.set(sx+(i===0?0.05:-0.05), 0.18, 11); scene.add(pl)
+// 1. Couloir d'entrée (Sud)
+makeTileFloor(0, RADIUS + ENTRANCE_L/2, ENTRANCE_W, ENTRANCE_L)
+;[-ENTRANCE_W/2, ENTRANCE_W/2].forEach((sx, i) => {
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(ENTRANCE_L, CH), mat(0x7a6a52, 0.92))
+  w.position.set(sx, CH/2, RADIUS + ENTRANCE_L/2); w.rotation.y = i===0 ? Math.PI/2 : -Math.PI/2; scene.add(w)
 })
+const bw = new THREE.Mesh(new THREE.PlaneGeometry(ENTRANCE_W, CH), mat(0x5a4a38, 0.95))
+bw.position.set(0, CH/2, RADIUS + ENTRANCE_L); bw.rotation.y = Math.PI; scene.add(bw) // Mur du fond entrée
 
-// Mur du fond
-const bw = new THREE.Mesh(new THREE.PlaneGeometry(4.5, CH), mat(0x5a4a38, 0.95))
-bw.position.set(0, CH/2, 17); bw.rotation.y = Math.PI; scene.add(bw)
-
-// Arche entrée salle
-const archM = mat(0xd4c4aa, 0.5)
-;[[-2.55,CH/2,4.8, 0.6,CH,0.6],[2.55,CH/2,4.8, 0.6,CH,0.6],[0,CH+0.3,4.8, 5.7,0.6,0.6]].forEach(([ax,ay,az,aw,ah,ad]) => {
-  const a = new THREE.Mesh(new THREE.BoxGeometry(aw,ah,ad), archM)
-  a.position.set(ax,ay,az); scene.add(a)
-})
-
-// Lustres couloir
-;[9, 12].forEach(z => {
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.5,8), mat(0x4a3820,0.5,0.5))
-  rod.position.set(0, CH-0.25, z); scene.add(rod)
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.15,10,8), mat(0xffe8b0,0.2,0.3))
-  lamp.position.set(0, CH-0.6, z); scene.add(lamp)
-  const pt = new THREE.PointLight(0xffd090, 0.5, 8)
-  pt.position.set(0, CH-0.65, z); scene.add(pt)
-})
-
-// ─── BRAS LATÉRAUX ────────────────────────────────────────────────────────────
-const LEFT_ANGLE  = Math.PI * 0.75
-const RIGHT_ANGLE = Math.PI * 0.25
-const ARM_LEN = 13, ARM_W = 5
-
+// 2. Bras latéraux et salles de mini-jeux
 function makeArm(angle, pageKey) {
-  const cx = Math.sin(angle) * (ARM_LEN/2 + 1)
-  const cz = -Math.cos(angle) * (ARM_LEN/2 + 1)
-  makeTileFloor(cx, cz, ARM_W, ARM_LEN, angle - Math.PI/2)
+  // Le bras part du bord du cercle
+  const cx = Math.sin(angle) * (RADIUS + ARM_LEN/2 - 1)
+  const cz = -Math.cos(angle) * (RADIUS + ARM_LEN/2 - 1)
+  makeTileFloor(cx, cz, ARM_W, ARM_LEN, angle)
 
-  // Plafond + murs bras
   const grp = new THREE.Group()
-  grp.position.set(cx, 0, cz); grp.rotation.y = angle - Math.PI/2
-  const ac = new THREE.Mesh(new THREE.PlaneGeometry(ARM_W, ARM_LEN), mat(0x0d0a06, 0.95))
-  ac.rotation.x = Math.PI/2; ac.position.set(0,CH,0); grp.add(ac)
+  grp.position.set(cx, 0, cz); grp.rotation.y = angle
   ;[-ARM_W/2, ARM_W/2].forEach((sx, i) => {
     const aw = new THREE.Mesh(new THREE.PlaneGeometry(ARM_LEN, CH), mat(0x7a6a52, 0.92))
     aw.position.set(sx, CH/2, 0); aw.rotation.y = i===0 ? Math.PI/2 : -Math.PI/2; grp.add(aw)
   })
   scene.add(grp)
 
-  // Salle rectangulaire au bout
-  const ex = Math.sin(angle) * (ARM_LEN + 2)
-  const ez = -Math.cos(angle) * (ARM_LEN + 2)
-
-  makeTileFloor(ex, ez, 10, 10)
-  const rc = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), mat(0x0d0a06, 0.95))
-  rc.rotation.x = Math.PI/2; rc.position.set(ex, CH, ez); scene.add(rc)
-  ;[[ex,CH/2,ez-5,0],[ex,CH/2,ez+5,Math.PI],[ex-5,CH/2,ez,Math.PI/2],[ex+5,CH/2,ez,-Math.PI/2]].forEach(([wx,wy,wz,wr]) => {
-    const wm = new THREE.Mesh(new THREE.PlaneGeometry(10, CH), mat(0x6a5a48, 0.92))
+  // Salle carrée au bout
+  const ex = Math.sin(angle) * (RADIUS + ARM_LEN + ROOM_SIZE/2 - 2)
+  const ez = -Math.cos(angle) * (RADIUS + ARM_LEN + ROOM_SIZE/2 - 2)
+  makeTileFloor(ex, ez, ROOM_SIZE, ROOM_SIZE)
+  
+  // Murs de la salle
+  ;[[ex,CH/2,ez-ROOM_SIZE/2,0],[ex,CH/2,ez+ROOM_SIZE/2,Math.PI],[ex-ROOM_SIZE/2,CH/2,ez,Math.PI/2],[ex+ROOM_SIZE/2,CH/2,ez,-Math.PI/2]].forEach(([wx,wy,wz,wr]) => {
+    const wm = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_SIZE, CH), mat(0x6a5a48, 0.92))
     wm.position.set(wx,wy,wz); wm.rotation.y = wr; scene.add(wm)
   })
 
-  // Lumière salle
-  const pt = new THREE.PointLight(0xffd090, 0.6, 12)
-  pt.position.set(ex, CH-0.5, ez); scene.add(pt)
-
   // Stand interactif
   const stand = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 0.8), mat(0x4a3a2a, 0.7))
-  stand.position.set(ex, 0.5, ez-2.5); scene.add(stand)
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.9), mat(0x111133, 0.1))
-  screen.position.set(ex, 1.25, ez-2.85); scene.add(screen)
-
-  // Label sur le stand
-  const standLight = new THREE.PointLight(0x4488ff, 0.4, 4)
-  standLight.position.set(ex, 1.5, ez-2); scene.add(standLight)
-
-  return { x: ex, z: ez, standX: ex, standZ: ez-2.5, page: pageKey }
+  stand.position.set(ex, 0.5, ez); scene.add(stand)
+  return { standX: ex, standZ: ez, page: pageKey }
 }
 
 const leftRoom  = makeArm(LEFT_ANGLE,  "left")
 const rightRoom = makeArm(RIGHT_ANGLE, "right")
 
-// ─── SALLE CIRCULAIRE ─────────────────────────────────────────────────────────
-const RADIUS = 8, ROOM_H = 7.5, ROOM_Z = 0
-
-// Sol circulaire damier
+// 3. Salle circulaire centrale
 for (let r = 0; r < 3; r++) {
   for (let i = 0; i < 36; i++) {
-    const ang = (i/36)*Math.PI*2
-    const ir = r*(RADIUS/3), or = (r+1)*(RADIUS/3)
-    const mx = Math.cos(ang+0.087)*(ir+or)/2
-    const mz = Math.sin(ang+0.087)*(ir+or)/2
-    const tile = new THREE.Mesh(
-      new THREE.PlaneGeometry(or-ir-0.06, (ir+or)/2*(Math.PI*2/36)-0.06),
-      mat((r+i)%2===0 ? 0xf0e8d8 : 0x1a1510, (r+i)%2===0 ? 0.6 : 0.8)
-    )
-    tile.rotation.x = -Math.PI/2
-    tile.rotation.z = -(ang+0.087)
-    tile.position.set(mx, 0.001, ROOM_Z+mz)
-    tile.receiveShadow = true; scene.add(tile)
+    const ang = (i/36)*Math.PI*2; const ir = r*(RADIUS/3), or = (r+1)*(RADIUS/3)
+    const mx = Math.cos(ang+0.087)*(ir+or)/2; const mz = Math.sin(ang+0.087)*(ir+or)/2
+    const tile = new THREE.Mesh(new THREE.PlaneGeometry(or-ir-0.06, (ir+or)/2*(Math.PI*2/36)-0.06), mat((r+i)%2===0 ? 0xf0e8d8 : 0x1a1510, (r+i)%2===0 ? 0.6 : 0.8))
+    tile.rotation.x = -Math.PI/2; tile.rotation.z = -(ang+0.087); tile.position.set(mx, 0.001, mz)
+    scene.add(tile)
   }
 }
+// Murs circulaires
+const wallCyl = new THREE.Mesh(new THREE.CylinderGeometry(RADIUS, RADIUS, CH, 48, 1, true), mat(0x8c7a62, 0.92))
+wallCyl.position.set(0, CH/2, 0); wallCyl.rotation.y = Math.PI; scene.add(wallCyl)
 
-// Plafond + mur cylindrique
-const roomCeil = new THREE.Mesh(new THREE.CircleGeometry(RADIUS+0.5, 48), mat(0x0d0a06, 0.95))
-roomCeil.rotation.x = Math.PI/2; roomCeil.position.set(0, ROOM_H, ROOM_Z); scene.add(roomCeil)
-
-const wallCyl = new THREE.Mesh(
-  new THREE.CylinderGeometry(RADIUS, RADIUS, ROOM_H, 48, 1, true),
-  mat(0x8c7a62, 0.92)
-)
-wallCyl.position.set(0, ROOM_H/2, ROOM_Z); wallCyl.rotation.y = Math.PI; scene.add(wallCyl)
-
-// Plinthes
-;[{y:0.2,h:0.4,c:0xd4c4aa},{y:ROOM_H-0.2,h:0.28,c:0xc8b89a}].forEach(({y,h,c}) => {
-  const cyl = new THREE.Mesh(
-    new THREE.CylinderGeometry(RADIUS-0.01, RADIUS-0.01, h, 48, 1, true),
-    mat(c, 0.6)
-  )
-  cyl.position.set(0, y, ROOM_Z); scene.add(cyl)
-})
-
-// Rond central doré
-const cDisc = new THREE.Mesh(new THREE.CircleGeometry(2.0, 48), mat(0x2a1f12, 0.85))
-cDisc.rotation.x = -Math.PI/2; cDisc.position.set(0, 0.005, ROOM_Z); scene.add(cDisc)
-;[2.0, 0.6].forEach(r => {
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(r-0.07, r+0.07, 48),
-    new THREE.MeshStandardMaterial({color:0xc8960a, side:THREE.DoubleSide, roughness:0.3, metalness:0.6})
-  )
-  ring.rotation.x = -Math.PI/2; ring.position.set(0, 0.01, ROOM_Z); scene.add(ring)
-})
-
-// Lustres salle
-;[[0,0],[3.5,3],[-3.5,3],[3.5,-3],[-3.5,-3]].forEach(([ox,oz]) => {
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.5,8), mat(0x4a3820,0.5,0.5))
-  rod.position.set(ox, ROOM_H-0.25, ROOM_Z+oz); scene.add(rod)
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16,12,8), mat(0xffe8b0,0.2,0.3))
-  lamp.position.set(ox, ROOM_H-0.62, ROOM_Z+oz); scene.add(lamp)
-  const pt = new THREE.PointLight(0xffe0a0, 0.4, 9)
-  pt.position.set(ox, ROOM_H-0.65, ROOM_Z+oz); scene.add(pt)
-})
-
-// ─── JUKEBOX ──────────────────────────────────────────────────────────────────
-const jkGrp = new THREE.Group(); jkGrp.position.set(0, 0, ROOM_Z - 1.5)
+// Jukebox
+const jkGrp = new THREE.Group(); jkGrp.position.set(0, 0, -2.5)
 const jkBody = new THREE.Mesh(new THREE.BoxGeometry(1.2,1.8,0.7), mat(0x8b0000,0.6,0.2)); jkBody.position.y=0.9; jkGrp.add(jkBody)
-const jkTop  = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.3,20), mat(0xcc2200,0.5,0.3)); jkTop.position.y=1.95; jkGrp.add(jkTop)
-const jkScrn = new THREE.Mesh(new THREE.PlaneGeometry(0.8,0.5), mat(0x001133,0.1)); jkScrn.position.set(0,1.2,0.36); jkGrp.add(jkScrn)
-const jkLight = new THREE.PointLight(0xff4400, 0.8, 3); jkLight.position.set(0,1.5,0.5); jkGrp.add(jkLight)
 scene.add(jkGrp)
 
-// ─── TABLEAUX ─────────────────────────────────────────────────────────────────
+// Tableaux
 const ART_ANGLES = [Math.PI, Math.PI*0.35, Math.PI*1.65]
-const goldMat  = mat(0xc8960a, 0.3, 0.8)
-const gold2Mat = mat(0xe8b830, 0.2, 0.9)
 const artObjects = []
-
 ART_ANGLES.forEach((angle, i) => {
   const nx = -Math.cos(angle), nz = -Math.sin(angle)
   const ry = Math.atan2(nx, nz)
-  const wX = Math.cos(angle) * (RADIUS - 0.12)
-  const wY = ROOM_H/2 + 0.4
-  const wZ = Math.sin(angle) * (RADIUS - 0.12) + ROOM_Z
-
-  // Canvas texture
-  const tc = document.createElement("canvas"); tc.width=512; tc.height=512
-  const tCtx = tc.getContext("2d")
-  tCtx.fillStyle="#e8e0d0"; tCtx.fillRect(0,0,512,512)
-  tCtx.strokeStyle="rgba(0,0,0,0.06)"; tCtx.lineWidth=2; tCtx.strokeRect(20,20,472,472)
-  const tex = new THREE.CanvasTexture(tc)
-
+  const wX = Math.cos(angle) * (RADIUS - 0.12), wY = CH/2, wZ = Math.sin(angle) * (RADIUS - 0.12)
   const grp = new THREE.Group()
-  const fw=3.2, fh=3.8
-  const cv = new THREE.Mesh(new THREE.PlaneGeometry(fw,fh), new THREE.MeshStandardMaterial({map:tex, roughness:0.8}))
+  const cv = new THREE.Mesh(new THREE.PlaneGeometry(3.2,3.8), mat(0xe8e0d0))
   cv.position.z=0.025; grp.add(cv)
-
-  const fwB=fw+0.35, fhB=fh+0.35, ft=0.18
-  ;[[0,fhB/2,fwB+ft,ft],[0,-fhB/2,fwB+ft,ft],[-fwB/2,0,ft,fhB],[fwB/2,0,ft,fhB]].forEach(([bx,by,bw,bh],idx) => {
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,0.14), idx%2===0?goldMat:gold2Mat)
-    bar.position.set(bx,by,0.01); grp.add(bar)
-  })
-
   grp.position.set(wX,wY,wZ); grp.rotation.y=ry; scene.add(grp)
-
-  const sp = addSpot(Math.cos(angle)*(RADIUS-3.5), ROOM_H-0.4, Math.sin(angle)*(RADIUS-3.5)+ROOM_Z, wX, wY, wZ)
-  const hx = Math.cos(angle)*(RADIUS-2.5), hz = Math.sin(angle)*(RADIUS-2.5)+ROOM_Z
-
-  artObjects.push({ id:`art${i}`, label:ART_LABELS[i], circleX:hx, circleZ:hz, wallX:wX, wallY:wY, wallZ:wZ, wallNX:nx, wallNZ:nz, frameGroup:grp, spot:sp, texture:tex, tCtx })
+  const sp = addSpot(Math.cos(angle)*(RADIUS-3.5), CH-0.4, Math.sin(angle)*(RADIUS-3.5), wX, wY, wZ)
+  artObjects.push({ id:`art${i}`, label:ART_LABELS[i], circleX:Math.cos(angle)*(RADIUS-2.5), circleZ:Math.sin(angle)*(RADIUS-2.5), wallX:wX, wallY:wY, wallZ:wZ, wallNX:nx, wallNZ:nz, frameGroup:grp, spot:sp })
 })
 
+// ─── GESTION DES COLLISIONS MATHEMATIQUES 2D (Respect du Schéma) ──────────────
+const MARGIN = 0.6; // Épaisseur du joueur pour pas traverser les murs
+function isWalkable(nx, nz) {
+  // 1. Dans le cercle central ?
+  if (nx*nx + nz*nz <= (RADIUS - MARGIN) * (RADIUS - MARGIN)) return true;
+  
+  // 2. Dans le couloir d'entrée Sud ?
+  if (nx > -ENTRANCE_W/2 + MARGIN && nx < ENTRANCE_W/2 - MARGIN && nz >= 0 && nz <= RADIUS + ENTRANCE_L - MARGIN) return true;
+  
+  // Fonction pour tester les bras inclinés (rotation des coordonnées)
+  function isInArm(x, z, angle) {
+    const cos = Math.cos(-angle), sin = Math.sin(-angle)
+    const rx = x * cos - z * sin, rz = x * sin + z * cos
+    // Dans le couloir du bras
+    if (rx > -ARM_W/2 + MARGIN && rx < ARM_W/2 - MARGIN && rz < 0 && rz > -(RADIUS + ARM_LEN)) return true;
+    // Dans la salle au bout
+    const roomZCenter = -(RADIUS + ARM_LEN + ROOM_SIZE/2 - 2)
+    if (rx > -ROOM_SIZE/2 + MARGIN && rx < ROOM_SIZE/2 - MARGIN && rz > roomZCenter - ROOM_SIZE/2 + MARGIN && rz < roomZCenter + ROOM_SIZE/2 - MARGIN) return true;
+    return false;
+  }
+  
+  if (isInArm(nx, nz, LEFT_ANGLE)) return true; // 3. Bras Gauche
+  if (isInArm(nx, nz, RIGHT_ANGLE)) return true; // 4. Bras Droit
+  
+  return false;
+}
+
 // ─── PERSONNAGE ───────────────────────────────────────────────────────────────
-const charGroup = new THREE.Group()
-charGroup.position.set(0, 0, 14)
+let charGroup = new THREE.Group()
+charGroup.position.set(0, 0, 14) // Point de départ dans l'entrée
 scene.add(charGroup)
 
-// Perso procédural (fallback)
-const bodyM = new THREE.MeshStandardMaterial({ color:0x222222, roughness:0.8 })
-const pHead  = new THREE.Mesh(new THREE.SphereGeometry(0.28,16,16), bodyM); pHead.position.y=1.45; charGroup.add(pHead)
-const pTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.20,0.5,12), bodyM); pTorso.position.y=1.02; charGroup.add(pTorso)
-const pRobe  = new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.16,0.4,12), bodyM); pRobe.position.y=0.62; charGroup.add(pRobe)
-const legG   = new THREE.CylinderGeometry(0.06,0.06,0.38,8)
-const pLL    = new THREE.Mesh(legG, bodyM); pLL.position.set(-0.1,0.24,0); charGroup.add(pLL)
-const pRL    = new THREE.Mesh(legG, bodyM); pRL.position.set(0.1,0.24,0); charGroup.add(pRL)
-const armG   = new THREE.CylinderGeometry(0.045,0.045,0.34,8)
-const pLA    = new THREE.Mesh(armG, bodyM); pLA.position.set(-0.24,1.02,0); pLA.rotation.z=0.4; charGroup.add(pLA)
-const pRA    = new THREE.Mesh(armG, bodyM); pRA.position.set(0.24,1.02,0); pRA.rotation.z=-0.4; charGroup.add(pRA)
-const proceduralParts = [pHead,pTorso,pRobe,pLL,pRL,pLA,pRA]
-
 let mixer=null, actionIdle=null, actionWalk=null, actionJump=null, currentAction=null
-let fbxLoaded = false
+let fbxModel = null;
 
-// Charge FBX
 if (THREE.FBXLoader) {
-  const loader = new THREE.FBXLoader()
-  loader.load(FBX_CHAR, fbx => {
-    fbx.scale.setScalar(0.012)
-    fbx.traverse(c => { if(c.isMesh){ c.castShadow=true; c.receiveShadow=true } })
-    proceduralParts.forEach(m => m.visible = false)
+  new THREE.FBXLoader().load(FBX_CHAR, fbx => {
+    // MODIFICATION : 2 fois plus grand et épais
+    fbx.scale.setScalar(0.024) 
+    fbx.traverse(c => { if(c.isMesh) { c.castShadow=true; c.receiveShadow=true } })
     charGroup.add(fbx)
+    fbxModel = fbx;
     mixer = new THREE.AnimationMixer(fbx)
-    fbxLoaded = true
 
-    const loadAnim = (url, cb) => loader.load(url, anim => { if(anim.animations?.length) cb(anim.animations[0]) })
+    const loadAnim = (url, cb) => new THREE.FBXLoader().load(url, anim => cb(anim.animations[0]))
     loadAnim(FBX_IDLE, clip => { actionIdle=mixer.clipAction(clip); actionIdle.play(); currentAction=actionIdle })
     loadAnim(FBX_WALK, clip => { actionWalk=mixer.clipAction(clip) })
     loadAnim(FBX_JUMP, clip => { actionJump=mixer.clipAction(clip); actionJump.setLoop(THREE.LoopOnce,1); actionJump.clampWhenFinished=true })
-
-    console.log("✓ FBX loaded")
-  }, undefined, err => console.warn("FBX error:", err))
+  })
 }
 
-function switchAnim(next, dur=0.2) {
+function switchAnim(next) {
   if(!mixer||!next||next===currentAction) return
-  currentAction?.fadeOut(dur)
-  next.reset().fadeIn(dur).play()
-  currentAction = next
+  currentAction?.fadeOut(0.2); next.reset().fadeIn(0.2).play(); currentAction = next
 }
 
-// ─── HUD REFS ─────────────────────────────────────────────────────────────────
-const labelArt   = document.getElementById("label-art")
-const labelEnter = document.getElementById("label-enter")
-const labelStand = document.getElementById("label-stand")
-const flash      = document.getElementById("flash")
-const loading    = document.getElementById("loading")
-
-// ─── INPUT ────────────────────────────────────────────────────────────────────
+// ─── INPUT ET LOGIQUE ─────────────────────────────────────────────────────────
 const keys = {}
-window.addEventListener("keydown", e => {
-  keys[e.key] = true
-  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault()
-})
-window.addEventListener("keyup", e => { keys[e.key] = false })
+window.addEventListener("keydown", e => { keys[e.code] = true; if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault() })
+window.addEventListener("keyup", e => keys[e.code] = false)
 
-// ─── ÉTAT ─────────────────────────────────────────────────────────────────────
-let charYaw=Math.PI, camYaw=Math.PI
-const CAM_DIST=4.5, CAM_HEIGHT=2.5, CAM_LAG=0.06
-const ROT_SPD=0.030, SPD=0.065
-let charY=0, velY=0, onGround=true
-const GRAVITY=0.018, JUMP_V=0.28
-let walkT=0, lastT=performance.now()
-const BOUNDS={minX:-22,maxX:22,minZ:-12,maxZ:16}
+let charYaw = Math.PI, charY = 0, velY = 0, onGround = true
+const ROT_SPD = 0.040, SPD = 0.08, GRAVITY = 0.018, JUMP_V = 0.28
+const CAM_DIST = 4.5, CAM_HEIGHT = 2.5
+let phase = "explore", phaseT = 0, jumpTarget = null, rfStart=new THREE.Vector3(), rfEnd=new THREE.Vector3(), rfLook=new THREE.Vector3()
 
-// Phases animation tableau
-let phase="explore", phaseT=0
-let jumpTarget=null, navigating=false
-const rfStart=new THREE.Vector3(), rfEnd=new THREE.Vector3(), rfLook=new THREE.Vector3()
-let wobbleT=0, activeSpotIdx=-1
+let lastT = performance.now()
 
-// ─── SON ──────────────────────────────────────────────────────────────────────
-let audioCtx=null
-function startAudio() {
-  if(audioCtx) return
-  try {
-    audioCtx = new(window.AudioContext||window.webkitAudioContext)()
-    const g=audioCtx.createGain(); g.gain.setValueAtTime(0,audioCtx.currentTime); g.gain.linearRampToValueAtTime(0.04,audioCtx.currentTime+3); g.connect(audioCtx.destination)
-    ;[55,110,165].forEach((f,i)=>{ const o=audioCtx.createOscillator(),gn=audioCtx.createGain(); o.type="sine"; o.frequency.value=f; gn.gain.value=[0.4,0.2,0.07][i]; o.connect(gn); gn.connect(g); o.start() })
-  } catch(e){}
-}
-function playImpact() {
-  if(!audioCtx) return
-  try {
-    const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.4,audioCtx.sampleRate)
-    const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(audioCtx.sampleRate*0.04))
-    const src=audioCtx.createBufferSource(); src.buffer=buf
-    const gn=audioCtx.createGain(); gn.gain.value=0.3
-    const flt=audioCtx.createBiquadFilter(); flt.type="lowpass"; flt.frequency.value=200
-    src.connect(flt); flt.connect(gn); gn.connect(audioCtx.destination); src.start()
-    const bell=audioCtx.createOscillator(),bg=audioCtx.createGain()
-    bell.frequency.value=420; bell.type="sine"
-    bg.gain.setValueAtTime(0.15,audioCtx.currentTime); bg.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+1.8)
-    bell.connect(bg); bg.connect(audioCtx.destination); bell.start(); bell.stop(audioCtx.currentTime+2)
-  } catch(e){}
-}
-const startOnce = () => { startAudio(); window.removeEventListener("keydown",startOnce); window.removeEventListener("click",startOnce) }
-window.addEventListener("keydown", startOnce); window.addEventListener("click", startOnce)
-
-// ─── RIPPLE ───────────────────────────────────────────────────────────────────
-function drawRipple(art, t) {
-  const {tCtx,texture}=art
-  tCtx.fillStyle="#e8e0d0"; tCtx.fillRect(0,0,512,512)
-  for(let i=0;i<4;i++){
-    const off=i/4, r=((t*0.65+off)%1)*280, alpha=1-((t*0.65+off)%1)
-    tCtx.beginPath(); tCtx.arc(256,256,r,0,Math.PI*2)
-    tCtx.strokeStyle=`rgba(180,140,60,${alpha*0.65})`; tCtx.lineWidth=8+i*3; tCtx.stroke()
-  }
-  texture.needsUpdate=true
-}
-
-// ─── BOUCLE ───────────────────────────────────────────────────────────────────
 function animate() {
   requestAnimationFrame(animate)
-  const now=performance.now(), dt=Math.min((now-lastT)/1000,0.05); lastT=now
+  const now = performance.now(), dt = Math.min((now-lastT)/1000, 0.05); lastT = now
   if(mixer) mixer.update(dt)
-  const cp=charGroup.position
 
-  if(phase==="explore") {
-    const fwd  =keys["ArrowUp"]   ||keys["z"]||keys["Z"]
-    const back =keys["ArrowDown"] ||keys["s"]||keys["S"]
-    const left =keys["ArrowLeft"] ||keys["q"]||keys["Q"]
-    const right=keys["ArrowRight"]||keys["d"]||keys["D"]
-    const space=keys[" "]
+  // FIX: Bloquer le Root Motion du FBX pour éviter le saut (téléportation) en fin de boucle
+  if (fbxModel) fbxModel.position.set(0, 0, 0);
 
-    if(left) charYaw+=ROT_SPD
-    if(right)charYaw-=ROT_SPD
-    charGroup.rotation.y=charYaw
+  const cp = charGroup.position
 
-    let dx=0,dz=0
-    if(fwd) { dx-=Math.sin(charYaw)*SPD; dz-=Math.cos(charYaw)*SPD }
-    if(back){ dx+=Math.sin(charYaw)*SPD; dz+=Math.cos(charYaw)*SPD }
-    if(left) { dx-=Math.cos(charYaw)*SPD*0.5; dz+=Math.sin(charYaw)*SPD*0.5 }
-    if(right){ dx+=Math.cos(charYaw)*SPD*0.5; dz-=Math.sin(charYaw)*SPD*0.5 }
+  if(phase === "explore") {
+    const fwd  = keys["ArrowUp"] || keys["KeyW"]
+    const back = keys["ArrowDown"] || keys["KeyS"]
+    const left = keys["ArrowLeft"] || keys["KeyA"]
+    const right= keys["ArrowRight"] || keys["KeyD"]
+    const space= keys["Space"]
 
-    if(space&&onGround){ velY=JUMP_V; onGround=false; if(actionJump)switchAnim(actionJump,0.1) }
-    velY-=GRAVITY; charY+=velY
-    if(charY<=0){ charY=0; velY=0; onGround=true }
-    charGroup.position.y=charY
+    if(left) charYaw += ROT_SPD; if(right) charYaw -= ROT_SPD
+    charGroup.rotation.y = charYaw
 
-    const moving=dx!==0||dz!==0
-    if(moving){
-      charGroup.position.x=Math.max(BOUNDS.minX,Math.min(BOUNDS.maxX,cp.x+dx))
-      charGroup.position.z=Math.max(BOUNDS.minZ,Math.min(BOUNDS.maxZ,cp.z+dz))
-    }
+    // Déplacement avec glissement (axe X puis axe Z)
+    let dx = 0, dz = 0
+    if(fwd) { dx -= Math.sin(charYaw)*SPD; dz -= Math.cos(charYaw)*SPD }
+    if(back){ dx += Math.sin(charYaw)*SPD; dz += Math.cos(charYaw)*SPD }
+    
+    // Application Mouvement X
+    if (isWalkable(cp.x + dx, cp.z)) cp.x += dx;
+    // Application Mouvement Z
+    if (isWalkable(cp.x, cp.z + dz)) cp.z += dz;
 
-    // Animation
+    if(space && onGround){ velY = JUMP_V; onGround = false; switchAnim(actionJump) }
+    velY -= GRAVITY; charY += velY; if(charY <= 0){ charY = 0; velY = 0; onGround = true }
+    cp.y = charY
+
     if(mixer){
-      if(onGround&&moving&&currentAction!==actionWalk) switchAnim(actionWalk)
-      else if(onGround&&!moving&&currentAction!==actionIdle&&currentAction!==actionJump) switchAnim(actionIdle)
-      else if(onGround&&currentAction===actionJump) switchAnim(actionIdle,0.3)
-    } else {
-      if(moving||!onGround){ walkT+=0.14; pLL.position.y=0.24+Math.sin(walkT)*0.06; pRL.position.y=0.24-Math.sin(walkT)*0.06; pLL.rotation.x=Math.sin(walkT)*0.35; pRL.rotation.x=-Math.sin(walkT)*0.35; pLA.rotation.x=-Math.sin(walkT)*0.28; pRA.rotation.x=Math.sin(walkT)*0.28; pHead.position.y=1.45+Math.sin(walkT*2)*0.01 }
-      pLA.rotation.z=onGround?0.4:0.4+velY*2; pRA.rotation.z=onGround?-0.4:-0.4-velY*2
+      if(onGround && (dx!==0 || dz!==0) && currentAction!==actionWalk) switchAnim(actionWalk)
+      else if(onGround && dx===0 && dz===0 && currentAction!==actionIdle && currentAction!==actionJump) switchAnim(actionIdle)
     }
 
-    // Caméra
-    camYaw+=(charYaw-camYaw)*CAM_LAG
-    camera.position.lerp(new THREE.Vector3(cp.x+Math.sin(camYaw)*CAM_DIST, CAM_HEIGHT+charY*0.3, cp.z+Math.cos(camYaw)*CAM_DIST), 0.1)
-    camera.lookAt(new THREE.Vector3(cp.x-Math.sin(charYaw)*0.8, 1.3+charY, cp.z-Math.cos(charYaw)*0.8))
+    // MODIFICATION : Caméra strictement verrouillée dans le dos (aucun retard)
+    camera.position.set(cp.x + Math.sin(charYaw)*CAM_DIST, cp.y + CAM_HEIGHT, cp.z + Math.cos(charYaw)*CAM_DIST)
+    camera.lookAt(cp.x, cp.y + 1.5, cp.z)
 
-    // Détections
-    let nearArt=null, nearArtIdx=-1
-    artObjects.forEach((a,idx)=>{ if(Math.hypot(cp.x-a.circleX,cp.z-a.circleZ)<2.0){nearArt=a;nearArtIdx=idx} })
-    const nearLeft  = Math.hypot(cp.x-leftRoom.standX, cp.z-leftRoom.standZ)  < 2.0
-    const nearRight = Math.hypot(cp.x-rightRoom.standX,cp.z-rightRoom.standZ) < 2.0
-    const nearStand = nearLeft||nearRight
+    // Détections interactions
+    let nearArt=null; artObjects.forEach(a => { if(Math.hypot(cp.x-a.circleX, cp.z-a.circleZ)<2.5) nearArt=a })
+    const nearLeft = Math.hypot(cp.x-leftRoom.standX, cp.z-leftRoom.standZ) < 3.0
+    const nearRight= Math.hypot(cp.x-rightRoom.standX, cp.z-rightRoom.standZ) < 3.0
+    
+    document.getElementById("label-enter").style.opacity = (nearArt&&!(nearLeft||nearRight))?"1":"0"
+    document.getElementById("label-stand").style.opacity = (nearLeft||nearRight)?"1":"0"
+    if(nearArt){ document.getElementById("label-art").innerText=nearArt.label; document.getElementById("label-art").style.opacity="1" } else document.getElementById("label-art").style.opacity="0"
 
-    labelEnter.style.opacity = (nearArt&&!nearStand)?"1":"0"
-    labelStand.style.opacity = nearStand?"1":"0"
-    if(nearArt){ labelArt.innerText=nearArt.label; labelArt.style.opacity="1" } else labelArt.style.opacity="0"
-
-    artSpots.forEach((sp,idx)=>{ const t=nearArtIdx===idx?4.5:2.2; sp.intensity+=(t-sp.intensity)*0.05 })
-
-    // E → tableau
-    if(nearArt&&(keys["e"]||keys["E"]||keys["Enter"])&&!navigating){
-      navigating=true; jumpTarget=nearArt; activeSpotIdx=nearArtIdx; phase="reframe"; phaseT=0
-      rfStart.copy(camera.position)
-      rfEnd.set(nearArt.wallX+nearArt.wallNX*4, CAM_HEIGHT, nearArt.wallZ+nearArt.wallNZ*4)
-      rfLook.set(nearArt.wallX,nearArt.wallY,nearArt.wallZ)
-      charYaw=Math.atan2(-nearArt.wallNX,-nearArt.wallNZ); charGroup.rotation.y=charYaw
-      labelEnter.style.opacity="0"; labelArt.style.opacity="0"
-      if(actionJump) switchAnim(actionJump,0.1)
+    if(nearArt && keys["KeyE"]){
+      phase="reframe"; phaseT=0; jumpTarget=nearArt
+      rfStart.copy(camera.position); rfEnd.set(nearArt.wallX+nearArt.wallNX*4, CAM_HEIGHT, nearArt.wallZ+nearArt.wallNZ*4); rfLook.set(nearArt.wallX,nearArt.wallY,nearArt.wallZ)
+      charYaw=Math.atan2(-nearArt.wallNX,-nearArt.wallNZ)
+      switchAnim(actionJump)
     }
-    // E → stand
-    if(nearStand&&(keys["e"]||keys["E"])&&!navigating){
-      window.location.href = nearLeft ? PAGES.left : PAGES.right
-    }
+    if((nearLeft||nearRight) && keys["KeyE"]) window.location.href = nearLeft ? PAGES.left : PAGES.right
 
-  } else if(phase==="reframe"){
-    phaseT+=0.016; const t=Math.min(phaseT,1), ease=t<0.5?2*t*t:-1+(4-2*t)*t
-    camera.position.lerpVectors(rfStart,rfEnd,ease)
-    camera.lookAt(new THREE.Vector3().lerpVectors(new THREE.Vector3(cp.x,1.3,cp.z),rfLook,ease))
-    if(activeSpotIdx>=0) artSpots[activeSpotIdx].intensity+=(7-artSpots[activeSpotIdx].intensity)*0.04
-    if(t>=1){phase="jump";phaseT=0}
-
-  } else if(phase==="jump"){
-    phaseT+=0.013
-    const tx=jumpTarget.wallX-cp.x, tz=jumpTarget.wallZ-cp.z, dist=Math.hypot(tx,tz)
-    if(dist>0.3){ charGroup.position.x+=(tx/dist)*SPD*2; charGroup.position.z+=(tz/dist)*SPD*2 }
-    const jp=Math.min(phaseT,1)
-    charGroup.position.y=Math.sin(jp*Math.PI)*1.3
-    const shrink=Math.max(0,1-Math.max(0,(jp-0.55))*2.8)
-    charGroup.scale.set(shrink,shrink,shrink)
-    camera.position.lerp(new THREE.Vector3(rfEnd.x*(1-jp*0.14),CAM_HEIGHT*(1-jp*0.04),rfEnd.z*(1-jp*0.14)),0.04)
-    camera.lookAt(rfLook)
-    if(dist<0.35||shrink<=0.02){ charGroup.visible=false; charGroup.scale.set(1,1,1); playImpact(); phase="wobble"; phaseT=0; wobbleT=0 }
-
-  } else if(phase==="wobble"){
-    phaseT+=0.018; wobbleT+=0.018
-    const wa=Math.exp(-wobbleT*2.5)*0.055
-    jumpTarget.frameGroup.rotation.y+=Math.sin(wobbleT*18)*wa*0.3
-    jumpTarget.frameGroup.position.y+=Math.sin(wobbleT*14)*wa*0.12
-    camera.position.lerp(new THREE.Vector3(rfEnd.x*0.88,CAM_HEIGHT*0.97,rfEnd.z*0.88),0.025)
-    camera.lookAt(rfLook)
-    if(wobbleT>0.85){phase="ripple";phaseT=0}
-
-  } else if(phase==="ripple"){
-    phaseT+=0.008; drawRipple(jumpTarget,phaseT)
-    camera.position.lerp(new THREE.Vector3(rfEnd.x*0.55,CAM_HEIGHT*0.94,rfEnd.z*0.55),0.016)
-    camera.lookAt(rfLook)
-    if(phaseT>3.5){ phase="flash"; flash.style.opacity="1"; setTimeout(()=>{ window.location.href=PAGES[jumpTarget.id]||"page-1.html" },420) }
+  } else if (phase === "reframe") {
+    phaseT+=0.02; const t=Math.min(phaseT,1)
+    camera.position.lerpVectors(rfStart,rfEnd,t)
+    camera.lookAt(new THREE.Vector3().lerpVectors(new THREE.Vector3(cp.x,1.5,cp.z),rfLook,t))
+    if(t>=1) phase="jump", phaseT=0
+  } else if (phase === "jump") {
+    phaseT+=0.015; const jp=Math.min(phaseT,1)
+    cp.x+=(jumpTarget.wallX-cp.x)*0.05; cp.z+=(jumpTarget.wallZ-cp.z)*0.05; cp.y=Math.sin(jp*Math.PI)*1.5
+    charGroup.scale.setScalar(Math.max(0, 1-jp))
+    if(jp>=1) { document.getElementById("flash").style.opacity="1"; setTimeout(()=>window.location.href=PAGES[jumpTarget.id], 300) }
   }
-
-  renderer.render(scene,camera)
+  renderer.render(scene, camera)
 }
 
-// Cache l'écran de chargement et lance
-setTimeout(() => {
-  loading.style.opacity="0"
-  setTimeout(()=>loading.remove(), 600)
-}, 800)
-
+setTimeout(() => { document.getElementById("loading").style.opacity="0"; setTimeout(()=>document.getElementById("loading").remove(), 600) }, 800)
 animate()
 </script>
 </body>
