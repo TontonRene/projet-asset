@@ -3,394 +3,405 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ThevertMenthe — Lobby</title>
+<title>ThevertMenthe — Lobby Mario 64 Pro</title>
 <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0f0a05; overflow: hidden; width: 100vw; height: 100vh; }
+  body { background: #000; overflow: hidden; width: 100vw; height: 100vh; }
   canvas { display: block; }
-
-  #hud {
-    position: fixed; inset: 0;
-    pointer-events: none;
-    font-family: 'Josefin Sans', sans-serif;
-  }
-
-  .hud-label {
-    position: absolute; left: 50%;
-    transform: translateX(-50%);
-    opacity: 0; transition: opacity 0.4s;
-    white-space: nowrap; text-align: center;
-  }
-  #label-art  { bottom: 100px; font-size: 14px; font-weight: 700; letter-spacing: 0.5em; color: rgba(200,150,10,0.9); }
-  #label-enter{ bottom: 72px;  font-size: 11px; letter-spacing: 0.45em; color: rgba(255,220,150,0.85); text-transform: lowercase; }
-  #label-stand{ bottom: 72px;  font-size: 11px; letter-spacing: 0.45em; color: rgba(150,200,255,0.85); text-transform: lowercase; }
-
-  #controls {
-    position: absolute; bottom: 24px; right: 24px;
-    font-size: 10px; letter-spacing: 0.3em;
-    color: rgba(255,255,255,0.2); text-transform: lowercase;
-    line-height: 1.8; text-align: right;
-  }
-
-  #flash {
-    position: absolute; inset: 0;
-    background: #fff; opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s ease-in;
-  }
-
-  #loading {
-    position: absolute; inset: 0;
-    background: #0f0a05;
-    display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 20px;
-    color: rgba(255,255,255,0.4);
-    font-family: 'Josefin Sans', sans-serif;
-    font-size: 11px; letter-spacing: 0.4em; text-transform: lowercase;
-    transition: opacity 0.6s;
-  }
-  .loader-bar {
-    width: 120px; height: 1px;
-    background: rgba(255,255,255,0.1);
-    position: relative; overflow: hidden;
-  }
-  .loader-fill {
-    position: absolute; left: -100%; top: 0;
-    width: 100%; height: 100%;
-    background: rgba(255,255,255,0.4);
-    animation: load 1.5s ease infinite;
-  }
+  #hud { position: fixed; inset: 0; pointer-events: none; font-family: 'Josefin Sans', sans-serif; }
+  .hud-label { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.4s; white-space: nowrap; text-align: center; }
+  #label-art  { bottom: 100px; font-size: 14px; font-weight: 700; letter-spacing: 0.5em; color: rgba(200,150,10,0.9); text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
+  #label-enter{ bottom: 72px;  font-size: 11px; letter-spacing: 0.45em; color: rgba(255,220,150,0.85); text-transform: lowercase; text-shadow: 1px 1px 2px black; }
+  #controls { position: absolute; bottom: 24px; right: 24px; font-size: 10px; color: rgba(255,255,255,0.6); text-align: right; line-height: 1.8; text-shadow: 1px 1px 2px black; }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity 0.5s; z-index: 100; }
+  #loading { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; color: rgba(255,255,255,0.4); font-size: 11px; transition: opacity 0.6s; z-index: 99; }
+  .loader-bar { width: 120px; height: 1px; background: rgba(255,255,255,0.1); position: relative; overflow: hidden; }
+  .loader-fill { position: absolute; left: -100%; top: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.4); animation: load 1.5s ease infinite; }
   @keyframes load { 0%{left:-100%} 100%{left:100%} }
 </style>
 </head>
 <body>
 
 <div id="loading">
-  <span>c h a r g e m e n t</span>
+  <span id="loading-text">i n i t i a l i s a t i o n</span>
   <div class="loader-bar"><div class="loader-fill"></div></div>
 </div>
 
 <div id="hud">
   <div class="hud-label" id="label-art"></div>
   <div class="hud-label" id="label-enter">E &nbsp;—&nbsp; e n t r e r</div>
-  <div class="hud-label" id="label-stand">E &nbsp;—&nbsp; i n t e r a g i r</div>
-  <div id="controls">
-    ↑ ↓ avancer · ← → tourner<br>
-    espace sauter · E interagir
-  </div>
+  <div id="controls">↑ avancer · ↓ demi-tour · ← → tourner<br>espace sauter · E interagir · F lampe<br>(Clic souris pour les coordonnées)</div>
   <div id="flash"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
-const FBX_BASE = "https://raw.githubusercontent.com/TontonRene/projet-asset/main/"
-const FBX_CHAR = FBX_BASE + "uploads_files_6510901_WOMAN-OFFICER.fbx"
-const FBX_IDLE = FBX_BASE + "Idle.fbx"
-const FBX_WALK = FBX_BASE + "Walking.fbx"
-const FBX_JUMP = FBX_BASE + "Jumping.fbx"
+// ─── CONFIGURATION ────────────────────────────────────────────────────────────
+const FBX_BASE = "./";
+const MAP_URL = "./gallery_3_-_fitz_favourites.glb"; 
+const SPAWN = { x: -639.05, y: 0, z: -418.69 };
 
-const PAGES = {
-  art0: "quiz.html", art1: "page-2.html", art2: "page-3.html",
-  left: "duck-hunt.html", right: "chasse-taupe.html",
-}
-const ART_LABELS = ["— I —", "— II —", "— III —"]
-
-// ─── INIT THREE.JS ────────────────────────────────────────────────────────────
-const W = () => window.innerWidth
-const H = () => window.innerHeight
-
-const renderer = new THREE.WebGLRenderer({ antialias: true })
-renderer.setSize(W(), H())
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
-renderer.shadowMap.enabled = true
-renderer.shadowMap.type = THREE.PCFSoftShadowMap
-renderer.setClearColor(0x0f0a05)
-document.body.appendChild(renderer.domElement)
-
-window.addEventListener("resize", () => {
-  renderer.setSize(W(), H())
-  camera.aspect = W() / H()
-  camera.updateProjectionMatrix()
-})
-
-const scene = new THREE.Scene()
-scene.fog = new THREE.FogExp2(0x0f0a05, 0.030)
-
-const camera = new THREE.PerspectiveCamera(62, W() / H(), 0.1, 80)
-
-const mat = (color, rough = 0.85, metal = 0) =>
-  new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal })
-
-// Lumières
-scene.add(new THREE.AmbientLight(0x3d2b1a, 0.9))
-const fill = new THREE.DirectionalLight(0xffd4a0, 0.25)
-fill.position.set(0, 10, 5); scene.add(fill)
-const artSpots = []
-
-function addSpot(px,py,pz,tx,ty,tz) {
-  const sp = new THREE.SpotLight(0xffc87a, 2.2, 18, 0.28, 0.7)
-  sp.position.set(px,py,pz); sp.target.position.set(tx,ty,tz)
-  sp.castShadow = true; scene.add(sp); scene.add(sp.target)
-  artSpots.push(sp); return sp
-}
-
-// ─── CONSTRUCTION DE LA MAP (Basée sur le schéma) ─────────────────────────────
-const CH = 6 // hauteur murs
-const RADIUS = 8
-const ENTRANCE_W = 4.5
-const ENTRANCE_L = 12
-const ARM_LEN = 13
-const ARM_W = 5
-const ROOM_SIZE = 10
-
-// Orientations corrigées pour matcher ton dessin vu de dessus
-const LEFT_ANGLE  = -Math.PI * 0.25 // Haut-Gauche (-45 deg)
-const RIGHT_ANGLE = Math.PI * 0.25  // Haut-Droite (+45 deg)
-
-function makeTileFloor(cx, cz, w, d, angle = 0) {
-  const grp = new THREE.Group()
-  grp.position.set(cx, 0, cz); grp.rotation.y = angle
-  const s = 1.5
-  const nx = Math.ceil(w/s), nz = Math.ceil(d/s)
-  const m0 = mat(0xf0e8d8, 0.6), m1 = mat(0x1a1510, 0.8)
-  for (let xi = 0; xi < nx; xi++) {
-    for (let zi = 0; zi < nz; zi++) {
-      const tile = new THREE.Mesh(new THREE.PlaneGeometry(s-0.03, s-0.03), (xi+zi)%2===0 ? m0 : m1)
-      tile.rotation.x = -Math.PI/2
-      tile.position.set(-w/2+xi*s+s/2, 0, -d/2+zi*s+s/2)
-      tile.receiveShadow = true; grp.add(tile)
+// --- ZONES D'INTERACTION ---
+const ZONES = [
+    { 
+        id: "photo1", 
+        type: "mario_jump", 
+        label: "P H O T O  0 1", 
+        dest: "page-photo1.html", 
+        x: -490, y: 87, z: -619, 
+        ry: -1.57, // Orientation du tableau
+        image: "photo1.png", width: 100, height: 75 
     }
-  }
-  scene.add(grp)
+];
+
+// ─── INIT SCÈNE ───────────────────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding; 
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.8; 
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0500);
+
+// --- CORRECTION : VRAIE LUMIÈRE GÉNÉRALE COSY ---
+scene.add(new THREE.AmbientLight(0xffcc88, 0.6)); 
+
+// Les 3 Spots pour ajouter du contraste et des reflets
+function createCosySpot(x, y, z, tx, tz) {
+    const spot = new THREE.SpotLight(0xffa050, 4, 800, 0.8, 1.0, 2);
+    spot.position.set(x, y, z);
+    spot.target.position.set(tx, 0, tz);
+    scene.add(spot);
+    scene.add(spot.target);
 }
+createCosySpot(SPAWN.x, 350, SPAWN.z, SPAWN.x, SPAWN.z);
+createCosySpot(SPAWN.x + 150, 350, SPAWN.z - 100, SPAWN.x + 150, SPAWN.z - 100);
+createCosySpot(SPAWN.x - 150, 350, SPAWN.z + 100, SPAWN.x - 150, SPAWN.z + 100);
 
-// 1. Couloir d'entrée (Sud)
-makeTileFloor(0, RADIUS + ENTRANCE_L/2, ENTRANCE_W, ENTRANCE_L)
-;[-ENTRANCE_W/2, ENTRANCE_W/2].forEach((sx, i) => {
-  const w = new THREE.Mesh(new THREE.PlaneGeometry(ENTRANCE_L, CH), mat(0x7a6a52, 0.92))
-  w.position.set(sx, CH/2, RADIUS + ENTRANCE_L/2); w.rotation.y = i===0 ? Math.PI/2 : -Math.PI/2; scene.add(w)
-})
-const bw = new THREE.Mesh(new THREE.PlaneGeometry(ENTRANCE_W, CH), mat(0x5a4a38, 0.95))
-bw.position.set(0, CH/2, RADIUS + ENTRANCE_L); bw.rotation.y = Math.PI; scene.add(bw) // Mur du fond entrée
+// --- SHADER POUR L'EFFET DE VAGUE (RIPPLE) ---
+const rippleShader = {
+    vertexShader: `
+        varying vec2 vUv;
+        uniform float uTime;
+        uniform float uRipple;
+        void main() {
+            vUv = uv;
+            vec3 pos = position;
+            if(uRipple > 0.0) {
+                float d = distance(uv, vec2(0.5));
+                pos.z += sin(d * 30.0 - uTime * 15.0) * uRipple * (1.0 - d);
+            }
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying vec2 vUv;
+        uniform sampler2D uTexture;
+        void main() {
+            gl_FragColor = texture2D(uTexture, vUv);
+        }
+    `
+};
 
-// 2. Bras latéraux et salles de mini-jeux
-function makeArm(angle, pageKey) {
-  // Le bras part du bord du cercle
-  const cx = Math.sin(angle) * (RADIUS + ARM_LEN/2 - 1)
-  const cz = -Math.cos(angle) * (RADIUS + ARM_LEN/2 - 1)
-  makeTileFloor(cx, cz, ARM_W, ARM_LEN, angle)
+// --- GÉNÉRATEUR DE TABLEAUX ---
+const textureLoader = new THREE.TextureLoader();
+const paintings = [];
 
-  const grp = new THREE.Group()
-  grp.position.set(cx, 0, cz); grp.rotation.y = angle
-  ;[-ARM_W/2, ARM_W/2].forEach((sx, i) => {
-    const aw = new THREE.Mesh(new THREE.PlaneGeometry(ARM_LEN, CH), mat(0x7a6a52, 0.92))
-    aw.position.set(sx, CH/2, 0); aw.rotation.y = i===0 ? Math.PI/2 : -Math.PI/2; grp.add(aw)
-  })
-  scene.add(grp)
+ZONES.forEach(zone => {
+    if (zone.image) {
+        textureLoader.load(FBX_BASE + zone.image, (tex) => {
+            const geometry = new THREE.PlaneGeometry(zone.width, zone.height, 32, 32);
+            const material = new THREE.ShaderMaterial({
+                uniforms: { uTexture: { value: tex }, uTime: { value: 0 }, uRipple: { value: 0 } },
+                vertexShader: rippleShader.vertexShader,
+                fragmentShader: rippleShader.fragmentShader,
+                side: THREE.DoubleSide
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(zone.x, zone.y, zone.z);
+            if (zone.ry !== undefined) mesh.rotation.y = zone.ry;
+            scene.add(mesh);
+            paintings.push({ mesh, id: zone.id });
+        });
+    }
+});
 
-  // Salle carrée au bout
-  const ex = Math.sin(angle) * (RADIUS + ARM_LEN + ROOM_SIZE/2 - 2)
-  const ez = -Math.cos(angle) * (RADIUS + ARM_LEN + ROOM_SIZE/2 - 2)
-  makeTileFloor(ex, ez, ROOM_SIZE, ROOM_SIZE)
-  
-  // Murs de la salle
-  ;[[ex,CH/2,ez-ROOM_SIZE/2,0],[ex,CH/2,ez+ROOM_SIZE/2,Math.PI],[ex-ROOM_SIZE/2,CH/2,ez,Math.PI/2],[ex+ROOM_SIZE/2,CH/2,ez,-Math.PI/2]].forEach(([wx,wy,wz,wr]) => {
-    const wm = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_SIZE, CH), mat(0x6a5a48, 0.92))
-    wm.position.set(wx,wy,wz); wm.rotation.y = wr; scene.add(wm)
-  })
+// ─── PARTICULES DE PIEDS ──────────────────────────────────────────────────────
+const dustCount = 25;
+const dustGeo = new THREE.BufferGeometry();
+const dustPos = new Float32Array(dustCount * 3);
+const dustVel = new Float32Array(dustCount * 3);
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+const dustMat = new THREE.PointsMaterial({ color: 0x6b533d, size: 5.0, transparent: true, opacity: 0 });
+const dustMesh = new THREE.Points(dustGeo, dustMat);
+scene.add(dustMesh);
 
-  // Stand interactif
-  const stand = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 0.8), mat(0x4a3a2a, 0.7))
-  stand.position.set(ex, 0.5, ez); scene.add(stand)
-  return { standX: ex, standZ: ez, page: pageKey }
-}
-
-const leftRoom  = makeArm(LEFT_ANGLE,  "left")
-const rightRoom = makeArm(RIGHT_ANGLE, "right")
-
-// 3. Salle circulaire centrale
-for (let r = 0; r < 3; r++) {
-  for (let i = 0; i < 36; i++) {
-    const ang = (i/36)*Math.PI*2; const ir = r*(RADIUS/3), or = (r+1)*(RADIUS/3)
-    const mx = Math.cos(ang+0.087)*(ir+or)/2; const mz = Math.sin(ang+0.087)*(ir+or)/2
-    const tile = new THREE.Mesh(new THREE.PlaneGeometry(or-ir-0.06, (ir+or)/2*(Math.PI*2/36)-0.06), mat((r+i)%2===0 ? 0xf0e8d8 : 0x1a1510, (r+i)%2===0 ? 0.6 : 0.8))
-    tile.rotation.x = -Math.PI/2; tile.rotation.z = -(ang+0.087); tile.position.set(mx, 0.001, mz)
-    scene.add(tile)
-  }
-}
-// Murs circulaires
-const wallCyl = new THREE.Mesh(new THREE.CylinderGeometry(RADIUS, RADIUS, CH, 48, 1, true), mat(0x8c7a62, 0.92))
-wallCyl.position.set(0, CH/2, 0); wallCyl.rotation.y = Math.PI; scene.add(wallCyl)
-
-// Jukebox
-const jkGrp = new THREE.Group(); jkGrp.position.set(0, 0, -2.5)
-const jkBody = new THREE.Mesh(new THREE.BoxGeometry(1.2,1.8,0.7), mat(0x8b0000,0.6,0.2)); jkBody.position.y=0.9; jkGrp.add(jkBody)
-scene.add(jkGrp)
-
-// Tableaux
-const ART_ANGLES = [Math.PI, Math.PI*0.35, Math.PI*1.65]
-const artObjects = []
-ART_ANGLES.forEach((angle, i) => {
-  const nx = -Math.cos(angle), nz = -Math.sin(angle)
-  const ry = Math.atan2(nx, nz)
-  const wX = Math.cos(angle) * (RADIUS - 0.12), wY = CH/2, wZ = Math.sin(angle) * (RADIUS - 0.12)
-  const grp = new THREE.Group()
-  const cv = new THREE.Mesh(new THREE.PlaneGeometry(3.2,3.8), mat(0xe8e0d0))
-  cv.position.z=0.025; grp.add(cv)
-  grp.position.set(wX,wY,wZ); grp.rotation.y=ry; scene.add(grp)
-  const sp = addSpot(Math.cos(angle)*(RADIUS-3.5), CH-0.4, Math.sin(angle)*(RADIUS-3.5), wX, wY, wZ)
-  artObjects.push({ id:`art${i}`, label:ART_LABELS[i], circleX:Math.cos(angle)*(RADIUS-2.5), circleZ:Math.sin(angle)*(RADIUS-2.5), wallX:wX, wallY:wY, wallZ:wZ, wallNX:nx, wallNZ:nz, frameGroup:grp, spot:sp })
-})
-
-// ─── GESTION DES COLLISIONS MATHEMATIQUES 2D (Respect du Schéma) ──────────────
-const MARGIN = 0.6; // Épaisseur du joueur pour pas traverser les murs
-function isWalkable(nx, nz) {
-  // 1. Dans le cercle central ?
-  if (nx*nx + nz*nz <= (RADIUS - MARGIN) * (RADIUS - MARGIN)) return true;
-  
-  // 2. Dans le couloir d'entrée Sud ?
-  if (nx > -ENTRANCE_W/2 + MARGIN && nx < ENTRANCE_W/2 - MARGIN && nz >= 0 && nz <= RADIUS + ENTRANCE_L - MARGIN) return true;
-  
-  // Fonction pour tester les bras inclinés (rotation des coordonnées)
-  function isInArm(x, z, angle) {
-    const cos = Math.cos(-angle), sin = Math.sin(-angle)
-    const rx = x * cos - z * sin, rz = x * sin + z * cos
-    // Dans le couloir du bras
-    if (rx > -ARM_W/2 + MARGIN && rx < ARM_W/2 - MARGIN && rz < 0 && rz > -(RADIUS + ARM_LEN)) return true;
-    // Dans la salle au bout
-    const roomZCenter = -(RADIUS + ARM_LEN + ROOM_SIZE/2 - 2)
-    if (rx > -ROOM_SIZE/2 + MARGIN && rx < ROOM_SIZE/2 - MARGIN && rz > roomZCenter - ROOM_SIZE/2 + MARGIN && rz < roomZCenter + ROOM_SIZE/2 - MARGIN) return true;
-    return false;
-  }
-  
-  if (isInArm(nx, nz, LEFT_ANGLE)) return true; // 3. Bras Gauche
-  if (isInArm(nx, nz, RIGHT_ANGLE)) return true; // 4. Bras Droit
-  
-  return false;
-}
+// ─── CHARGEMENT MAP & COLLIDABLES (POUR LE RAYCASTING) ────────────────────────
+let collidables = [];
+const gltfLoader = new THREE.GLTFLoader();
+gltfLoader.load(MAP_URL, (gltf) => {
+    scene.add(gltf.scene);
+    gltf.scene.traverse(n => { if(n.isMesh) collidables.push(n); });
+    document.getElementById("loading").style.opacity = "0";
+    setTimeout(() => document.getElementById("loading").remove(), 600);
+});
 
 // ─── PERSONNAGE ───────────────────────────────────────────────────────────────
-let charGroup = new THREE.Group()
-charGroup.position.set(0, 0, 14) // Point de départ dans l'entrée
-scene.add(charGroup)
+const charGroup = new THREE.Group();
+charGroup.position.set(SPAWN.x, SPAWN.y, SPAWN.z);
+scene.add(charGroup);
 
-let mixer=null, actionIdle=null, actionWalk=null, actionJump=null, currentAction=null
-let fbxModel = null;
+// --- LAMPE TORCHE ---
+const flashlight = new THREE.SpotLight(0xffeedd, 10, 1000, 0.4, 0.5, 1.2);
+flashlight.position.set(20, 130, -10); 
+charGroup.add(flashlight);
+flashlight.target.position.set(20, 110, -200); 
+charGroup.add(flashlight.target);
+flashlight.visible = false;
 
-if (THREE.FBXLoader) {
-  new THREE.FBXLoader().load(FBX_CHAR, fbx => {
-    // MODIFICATION : 2 fois plus grand et épais
-    fbx.scale.setScalar(0.024) 
-    fbx.traverse(c => { if(c.isMesh) { c.castShadow=true; c.receiveShadow=true } })
-    charGroup.add(fbx)
-    fbxModel = fbx;
-    mixer = new THREE.AnimationMixer(fbx)
+let mixer, actionIdle, actionWalk, actionJump, actionTurn, currentAction;
+let charHeight = 150; 
 
-    const loadAnim = (url, cb) => new THREE.FBXLoader().load(url, anim => cb(anim.animations[0]))
-    loadAnim(FBX_IDLE, clip => { actionIdle=mixer.clipAction(clip); actionIdle.play(); currentAction=actionIdle })
-    loadAnim(FBX_WALK, clip => { actionWalk=mixer.clipAction(clip) })
-    loadAnim(FBX_JUMP, clip => { actionJump=mixer.clipAction(clip); actionJump.setLoop(THREE.LoopOnce,1); actionJump.clampWhenFinished=true })
-  })
+const fbxLoader = new THREE.FBXLoader();
+fbxLoader.load(FBX_BASE + "uploads_files_6510901_WOMAN-OFFICER.fbx", fbx => {
+    fbx.scale.setScalar(1);
+    fbx.rotation.y = Math.PI;
+    charGroup.add(fbx);
+    const bbox = new THREE.Box3().setFromObject(fbx);
+    charHeight = bbox.max.y - bbox.min.y;
+    mixer = new THREE.AnimationMixer(fbx);
+    const load = (f, cb) => fbxLoader.load(FBX_BASE + f, a => cb(a.animations[0]));
+    load("Idle.fbx", c => { actionIdle = mixer.clipAction(c); actionIdle.play(); currentAction = actionIdle; });
+    load("Walking.fbx", c => { actionWalk = mixer.clipAction(c); });
+    load("Jumping.fbx", c => { actionJump = mixer.clipAction(c); actionJump.setLoop(THREE.LoopOnce, 1); actionJump.clampWhenFinished = true; actionJump.timeScale = 0.6; });
+    load("Walking Turn 180.fbx", c => { actionTurn = mixer.clipAction(c); actionTurn.setLoop(THREE.LoopOnce, 1); });
+});
+
+// ─── LOGIQUE DE JEU & PHYSIQUE ────────────────────────────────────────────────
+const keys = {};
+window.addEventListener("keydown", e => {
+    keys[e.code] = true;
+    if (e.code === "KeyF") flashlight.visible = !flashlight.visible;
+});
+window.addEventListener("keyup", e => keys[e.code] = false);
+
+let charYaw = 0, camYaw = 0, charY = 0, velY = 0, onGround = true, canJump = true;
+let isTurning180 = false, turnTimer = 0, walkTimer = 0;
+const SPD = 2.25, ROT_SPD = 0.04, GRAVITY = 0.4, JUMP_V = 5.25; 
+
+const raycaster = new THREE.Raycaster();
+
+let phase = "explore", phaseT = 0, activeZone = null;
+const rfStartCam = new THREE.Vector3(), rfEndCam = new THREE.Vector3();
+const rfStartChar = new THREE.Vector3();
+
+function switchAnim(next, dur = 0.2) {
+    if(!mixer || !next || next === currentAction) return;
+    if(currentAction) currentAction.fadeOut(dur);
+    next.reset().fadeIn(dur).play();
+    currentAction = next;
 }
-
-function switchAnim(next) {
-  if(!mixer||!next||next===currentAction) return
-  currentAction?.fadeOut(0.2); next.reset().fadeIn(0.2).play(); currentAction = next
-}
-
-// ─── INPUT ET LOGIQUE ─────────────────────────────────────────────────────────
-const keys = {}
-window.addEventListener("keydown", e => { keys[e.code] = true; if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault() })
-window.addEventListener("keyup", e => keys[e.code] = false)
-
-let charYaw = Math.PI, charY = 0, velY = 0, onGround = true
-const ROT_SPD = 0.040, SPD = 0.08, GRAVITY = 0.018, JUMP_V = 0.28
-const CAM_DIST = 4.5, CAM_HEIGHT = 2.5
-let phase = "explore", phaseT = 0, jumpTarget = null, rfStart=new THREE.Vector3(), rfEnd=new THREE.Vector3(), rfLook=new THREE.Vector3()
-
-let lastT = performance.now()
 
 function animate() {
-  requestAnimationFrame(animate)
-  const now = performance.now(), dt = Math.min((now-lastT)/1000, 0.05); lastT = now
-  if(mixer) mixer.update(dt)
+    requestAnimationFrame(animate);
+    const dt = 0.016;
+    if(mixer) mixer.update(dt);
+    const cp = charGroup.position;
 
-  // FIX: Bloquer le Root Motion du FBX pour éviter le saut (téléportation) en fin de boucle
-  if (fbxModel) fbxModel.position.set(0, 0, 0);
+    // Mise à jour de l'effet de vague des tableaux
+    paintings.forEach(p => p.mesh.material.uniforms.uTime.value += dt);
 
-  const cp = charGroup.position
+    if (phase === "explore") {
+        const fwd = keys["ArrowUp"] || keys["KeyW"];
+        const back = keys["ArrowDown"] || keys["KeyS"];
+        const left = keys["ArrowLeft"] || keys["KeyA"];
+        const right = keys["ArrowRight"] || keys["KeyD"];
+        const space = keys["Space"];
 
-  if(phase === "explore") {
-    const fwd  = keys["ArrowUp"] || keys["KeyW"]
-    const back = keys["ArrowDown"] || keys["KeyS"]
-    const left = keys["ArrowLeft"] || keys["KeyA"]
-    const right= keys["ArrowRight"] || keys["KeyD"]
-    const space= keys["Space"]
+        if (back && !isTurning180 && onGround && actionTurn) {
+            isTurning180 = true; turnTimer = 0; switchAnim(actionTurn);
+        }
 
-    if(left) charYaw += ROT_SPD; if(right) charYaw -= ROT_SPD
-    charGroup.rotation.y = charYaw
+        if (isTurning180) {
+            turnTimer += dt;
+            camYaw += ((charYaw + Math.PI) - camYaw) * 0.08; 
+            if (turnTimer >= actionTurn.getClip().duration - 0.2) {
+                isTurning180 = false; charYaw += Math.PI; charGroup.rotation.y = charYaw;
+                switchAnim(actionIdle);
+            }
+        } else {
+            if(left) charYaw += ROT_SPD; if(right) charYaw -= ROT_SPD;
+            charGroup.rotation.y = charYaw;
+            camYaw += (charYaw - camYaw) * 0.1;
 
-    // Déplacement avec glissement (axe X puis axe Z)
-    let dx = 0, dz = 0
-    if(fwd) { dx -= Math.sin(charYaw)*SPD; dz -= Math.cos(charYaw)*SPD }
-    if(back){ dx += Math.sin(charYaw)*SPD; dz += Math.cos(charYaw)*SPD }
-    
-    // Application Mouvement X
-    if (isWalkable(cp.x + dx, cp.z)) cp.x += dx;
-    // Application Mouvement Z
-    if (isWalkable(cp.x, cp.z + dz)) cp.z += dz;
+            let dx = 0, dz = 0;
+            if(fwd) { dx -= Math.sin(charYaw)*SPD; dz -= Math.cos(charYaw)*SPD; }
 
-    if(space && onGround){ velY = JUMP_V; onGround = false; switchAnim(actionJump) }
-    velY -= GRAVITY; charY += velY; if(charY <= 0){ charY = 0; velY = 0; onGround = true }
-    cp.y = charY
+            // --- COLLISIONS AU SOL ---
+            if (dx !== 0 || dz !== 0) {
+                walkTimer += dt;
+                const rayOrigin = new THREE.Vector3(cp.x, cp.y + 50, cp.z);
+                raycaster.set(rayOrigin, new THREE.Vector3(dx, 0, dz).normalize());
+                const intersects = raycaster.intersectObjects(collidables, true);
+                
+                if (intersects.length === 0 || intersects[0].distance > 40) {
+                    cp.x += dx; cp.z += dz;
+                }
+            } else { 
+                walkTimer = 0; 
+            }
 
-    if(mixer){
-      if(onGround && (dx!==0 || dz!==0) && currentAction!==actionWalk) switchAnim(actionWalk)
-      else if(onGround && dx===0 && dz===0 && currentAction!==actionIdle && currentAction!==actionJump) switchAnim(actionIdle)
+            // --- SAUT CLASSIQUE ---
+            if(space && onGround && canJump){ 
+                velY = JUMP_V; 
+                onGround = false; 
+                canJump = false; 
+                switchAnim(actionJump, 0.1); 
+            }
+
+            if(onGround && !isTurning180 && currentAction !== actionJump) {
+                const target = (dx !== 0 || dz !== 0) ? actionWalk : actionIdle;
+                if(currentAction !== target) switchAnim(target);
+            }
+        }
+
+        // --- GRAVITÉ ---
+        velY -= GRAVITY; 
+        charY += velY;
+        if(charY <= 0){ 
+            charY = 0; 
+            velY = 0; 
+            if(!onGround){ 
+                onGround = true; 
+                canJump = true; 
+                switchAnim(actionIdle, 0.1); 
+            }
+        }
+        cp.y = charY;
+
+        // --- PARTICULES DE PIEDS ---
+        if (walkTimer > 1.0 && onGround) {
+            dustMat.opacity = Math.min(dustMat.opacity + 0.05, 0.9);
+            for(let i=0; i<dustCount*3; i+=3) {
+                if (dustPos[i+1] <= 0) { 
+                    dustPos[i] = cp.x + (Math.random()-0.5)*25;
+                    dustPos[i+1] = 5;
+                    dustPos[i+2] = cp.z + (Math.random()-0.5)*25;
+                    dustVel[i+1] = Math.random() * 2;
+                }
+                dustPos[i+1] += dustVel[i+1]; dustVel[i+1] -= 0.1; 
+            }
+            dustGeo.attributes.position.needsUpdate = true;
+        } else { dustMat.opacity = Math.max(dustMat.opacity - 0.1, 0); }
+
+        // --- CORRECTION : CAMÉRA ANTI-OCCLUSION ---
+        const idealDist = charHeight * 2.0;
+        const targetCamPos = new THREE.Vector3(
+            cp.x + Math.sin(camYaw) * idealDist, 
+            cp.y + charHeight * 1.2, 
+            cp.z + Math.cos(camYaw) * idealDist
+        );
+        
+        // Le rayon part des épaules du personnage, pas de ses pieds !
+        const headPos = new THREE.Vector3(cp.x, cp.y + charHeight * 0.8, cp.z);
+        const camRayDir = new THREE.Vector3().subVectors(targetCamPos, headPos).normalize();
+        const distToTarget = headPos.distanceTo(targetCamPos);
+
+        raycaster.set(headPos, camRayDir);
+        const camIntersects = raycaster.intersectObjects(collidables, true);
+        
+        if (camIntersects.length > 0 && camIntersects[0].distance < distToTarget) {
+            const safeDist = Math.max(0, camIntersects[0].distance - 15);
+            camera.position.copy(headPos).add(camRayDir.multiplyScalar(safeDist));
+        } else {
+            camera.position.lerp(targetCamPos, 0.1);
+        }
+        camera.lookAt(headPos);
+
+        // --- INTERACTION ET DÉCLENCHEMENT MARIO ---
+        activeZone = null;
+        ZONES.forEach(z => { if(Math.hypot(cp.x-z.x, cp.z-z.z) < 150) activeZone = z; });
+        document.getElementById("label-enter").style.opacity = activeZone ? "1" : "0";
+        
+        if (activeZone && keys["KeyE"] && onGround) {
+            phase = "mario_zoom"; phaseT = 0;
+            rfStartCam.copy(camera.position);
+            rfEndCam.set(activeZone.x + Math.sin(activeZone.ry)*150, activeZone.y, activeZone.z + Math.cos(activeZone.ry)*150);
+            rfStartChar.copy(cp);
+            
+            // Fait pivoter le personnage pour qu'il regarde le tableau IMMÉDIATEMENT
+            charYaw = Math.atan2(activeZone.x - cp.x, activeZone.z - cp.z);
+            charGroup.rotation.y = charYaw;
+            
+            switchAnim(actionIdle);
+        }
+
+    } else if (phase === "mario_zoom") {
+        // CORRECTION : Zoom réduit de moitié (plus lent et cinématographique)
+        phaseT += 0.02;
+        camera.position.lerpVectors(rfStartCam, rfEndCam, Math.min(phaseT, 1));
+        camera.lookAt(activeZone.x, activeZone.y, activeZone.z);
+        if(phaseT >= 1) { phase = "mario_jump"; phaseT = 0; switchAnim(actionJump, 0.1); }
+
+    } else if (phase === "mario_jump") {
+        // Saut parabolique
+        phaseT += 0.02;
+        const t = Math.min(phaseT, 1);
+        
+        cp.x = rfStartChar.x + (activeZone.x - rfStartChar.x) * t;
+        cp.z = rfStartChar.z + (activeZone.z - rfStartChar.z) * t;
+        cp.y = Math.sin(t * Math.PI) * 100; // Cloche du saut
+
+        // Vaguelette et disparition
+        if (t > 0.8) {
+            const pt = paintings.find(p => p.id === activeZone.id);
+            if(pt) pt.mesh.material.uniforms.uRipple.value = 5.0; 
+            charGroup.scale.setScalar(Math.max(0, 1 - (t-0.8)*5)); 
+        }
+
+        if(t >= 1) {
+            document.getElementById("flash").style.opacity = "1";
+            setTimeout(() => window.location.href = activeZone.dest, 500);
+            phase = "done";
+        }
     }
 
-    // MODIFICATION : Caméra strictement verrouillée dans le dos (aucun retard)
-    camera.position.set(cp.x + Math.sin(charYaw)*CAM_DIST, cp.y + CAM_HEIGHT, cp.z + Math.cos(charYaw)*CAM_DIST)
-    camera.lookAt(cp.x, cp.y + 1.5, cp.z)
-
-    // Détections interactions
-    let nearArt=null; artObjects.forEach(a => { if(Math.hypot(cp.x-a.circleX, cp.z-a.circleZ)<2.5) nearArt=a })
-    const nearLeft = Math.hypot(cp.x-leftRoom.standX, cp.z-leftRoom.standZ) < 3.0
-    const nearRight= Math.hypot(cp.x-rightRoom.standX, cp.z-rightRoom.standZ) < 3.0
-    
-    document.getElementById("label-enter").style.opacity = (nearArt&&!(nearLeft||nearRight))?"1":"0"
-    document.getElementById("label-stand").style.opacity = (nearLeft||nearRight)?"1":"0"
-    if(nearArt){ document.getElementById("label-art").innerText=nearArt.label; document.getElementById("label-art").style.opacity="1" } else document.getElementById("label-art").style.opacity="0"
-
-    if(nearArt && keys["KeyE"]){
-      phase="reframe"; phaseT=0; jumpTarget=nearArt
-      rfStart.copy(camera.position); rfEnd.set(nearArt.wallX+nearArt.wallNX*4, CAM_HEIGHT, nearArt.wallZ+nearArt.wallNZ*4); rfLook.set(nearArt.wallX,nearArt.wallY,nearArt.wallZ)
-      charYaw=Math.atan2(-nearArt.wallNX,-nearArt.wallNZ)
-      switchAnim(actionJump)
-    }
-    if((nearLeft||nearRight) && keys["KeyE"]) window.location.href = nearLeft ? PAGES.left : PAGES.right
-
-  } else if (phase === "reframe") {
-    phaseT+=0.02; const t=Math.min(phaseT,1)
-    camera.position.lerpVectors(rfStart,rfEnd,t)
-    camera.lookAt(new THREE.Vector3().lerpVectors(new THREE.Vector3(cp.x,1.5,cp.z),rfLook,t))
-    if(t>=1) phase="jump", phaseT=0
-  } else if (phase === "jump") {
-    phaseT+=0.015; const jp=Math.min(phaseT,1)
-    cp.x+=(jumpTarget.wallX-cp.x)*0.05; cp.z+=(jumpTarget.wallZ-cp.z)*0.05; cp.y=Math.sin(jp*Math.PI)*1.5
-    charGroup.scale.setScalar(Math.max(0, 1-jp))
-    if(jp>=1) { document.getElementById("flash").style.opacity="1"; setTimeout(()=>window.location.href=PAGES[jumpTarget.id], 300) }
-  }
-  renderer.render(scene, camera)
+    renderer.render(scene, camera);
 }
 
-setTimeout(() => { document.getElementById("loading").style.opacity="0"; setTimeout(()=>document.getElementById("loading").remove(), 600) }, 800)
-animate()
+// ─── OUTIL DÉBOGAGE : LE SCANNER DE COORDONNÉES (AMÉLIORÉ) ───
+const debugRaycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+const markerGeo = new THREE.SphereGeometry(3, 16, 16);
+const markerMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+const marker = new THREE.Mesh(markerGeo, markerMat);
+scene.add(marker);
+
+window.addEventListener('mousedown', (event) => {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    debugRaycaster.setFromCamera(mouse, camera);
+    const intersects = debugRaycaster.intersectObjects(collidables, true);
+    
+    if (intersects.length > 0) {
+        const p = intersects[0].point;
+        marker.position.copy(p); // Boule rouge
+        console.log(`%c📍 CLIC DÉTECTÉ ! Copie ces valeurs :`, 'background: #222; color: #00ff00; font-size: 14px; font-weight: bold;');
+        console.log(`x: ${Math.round(p.x)},  y: ${Math.round(p.y)},  z: ${Math.round(p.z)}`);
+    }
+});
+
+animate();
 </script>
 </body>
 </html>
