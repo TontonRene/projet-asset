@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThevertMenthe</title>
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@100;300;400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    font-family: 'Josefin Sans', sans-serif;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    user-select: none;
+  }
+
+  .wordmark {
+    position: absolute;
+    top: 40px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    white-space: nowrap;
+  }
+  .wordmark-title { font-size: 28px; font-weight: 700; letter-spacing: 0.02em; display: block; }
+  .wordmark-rule  { height: 1px; background: #fff; margin: 6px 0; }
+  .wordmark-sub   { font-size: 10px; letter-spacing: 0.5em; opacity: 0.5; text-transform: lowercase; display: block; }
+
+  .center {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 40px;
+    width: 280px;
+  }
+  .enter-label {
+    font-size: 10px; letter-spacing: 0.5em;
+    text-transform: lowercase; opacity: 0.4;
+  }
+
+  .input-wrap {
+    width: 100%;
+    border-bottom: 1px solid rgba(255,255,255,0.3);
+    display: flex; align-items: center; gap: 12px;
+    padding-bottom: 10px;
+    transition: border-color 0.3s, transform 0.1s;
+  }
+  .input-wrap.shake { animation: shake 0.35s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-7px); }
+    40%      { transform: translateX(7px); }
+    60%      { transform: translateX(-5px); }
+    80%      { transform: translateX(5px); }
+  }
+
+  .dots { display: flex; gap: 10px; flex: 1; justify-content: center; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transition: background 0.15s;
+  }
+  .dot.filled { background: #fff; }
+
+  .arrow {
+    font-size: 14px; opacity: 0.3; cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .arrow.active { opacity: 0.8; }
+
+  .msg {
+    font-size: 10px; letter-spacing: 0.3em;
+    height: 14px; text-transform: lowercase;
+    color: rgba(255,255,255,0.4);
+    transition: color 0.3s;
+  }
+  .msg.success { color: rgba(255,255,255,0.7); }
+
+  .corner {
+    position: absolute; font-size: 10px;
+    letter-spacing: 0.3em; opacity: 0.2;
+    text-transform: lowercase;
+  }
+  .corner.bl { bottom: 32px; left: 40px; }
+  .corner.br { bottom: 32px; right: 40px; }
+
+  body.fadeout { opacity: 0; transition: opacity 0.6s ease; }
+
+  /* Input invisible */
+  #pwd-input {
+    position: absolute; opacity: 0;
+    width: 1px; height: 1px;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="wordmark">
+  <span class="wordmark-title">ThevertMenthe</span>
+  <div class="wordmark-rule"></div>
+  <span class="wordmark-sub">d r a w i n g s</span>
+</div>
+
+<div class="center">
+  <span class="enter-label">e n t r e z &nbsp; l e &nbsp; c o d e</span>
+
+  <div class="input-wrap" id="wrap">
+    <div class="dots" id="dots">
+      <div class="dot" id="d0"></div>
+      <div class="dot" id="d1"></div>
+      <div class="dot" id="d2"></div>
+      <div class="dot" id="d3"></div>
+    </div>
+    <span class="arrow" id="arrow" onclick="tryEnter()">→</span>
+  </div>
+
+  <div class="msg" id="msg"></div>
+</div>
+
+<div class="corner bl">0 1 &nbsp;/&nbsp; 0 1</div>
+<div class="corner br">2 0 2 5</div>
+
+<input id="pwd-input" type="password" maxlength="4" autocomplete="off">
+
+<script>
+  // ⚙️ Change le mot de passe ici
+  const PASSWORD = "1234"
+  const NEXT_PAGE = "lobby.html"
+
+  const input  = document.getElementById("pwd-input")
+  const dots   = [0,1,2,3].map(i => document.getElementById("d"+i))
+  const arrow  = document.getElementById("arrow")
+  const msg    = document.getElementById("msg")
+  const wrap   = document.getElementById("wrap")
+
+  // Focus auto
+  document.body.addEventListener("click", () => input.focus())
+  document.body.addEventListener("keydown", () => input.focus())
+  input.focus()
+
+  input.addEventListener("input", () => {
+    const v = input.value
+    dots.forEach((d,i) => d.classList.toggle("filled", i < v.length))
+    arrow.classList.toggle("active", v.length > 0)
+    msg.textContent = ""
+    msg.classList.remove("success")
+    if (v.length === 4) setTimeout(tryEnter, 300)
+  })
+
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") tryEnter()
+  })
+
+  function tryEnter() {
+    const v = input.value
+    if (v === PASSWORD) {
+      msg.classList.add("success")
+      msg.innerHTML = "✓ &nbsp; b i e n v e n u e"
+      setTimeout(() => document.body.classList.add("fadeout"), 500)
+      setTimeout(() => { window.location.href = NEXT_PAGE }, 1100)
+    } else {
+      msg.textContent = "c o d e &nbsp; i n c o r r e c t"
+      wrap.classList.add("shake")
+      wrap.addEventListener("animationend", () => wrap.classList.remove("shake"), { once: true })
+      input.value = ""
+      dots.forEach(d => d.classList.remove("filled"))
+      arrow.classList.remove("active")
+      setTimeout(() => input.focus(), 100)
+    }
+  }
+</script>
+</body>
+</html>
